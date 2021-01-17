@@ -10,3 +10,8 @@
 
 ## 读取图像
 我们可以发送HTTP请求给指定的URL（统一资源定位符），这个URL就是所谓的网络API，如果请求成功，它会返回HTTP响应，而HTTP响应的消息体中就有我们需要的Jpg格式的数据。
+
+http://192.168.1.1:80/snapshot.cgi?resolution=11&user=admin&pwd=
+
+### WiFi连接
+在WINDOWS的WIFI列表中手动切换WIFI时，系统会先断开当前WIFI连接，再连接等待连接的WIFI。在程序中搜索到minifly的WIFI后，不断开当前WIFI连接，直接与minifly建立连接，无需等待，可瞬间完成连接，节约了大约八秒的等待时间。
