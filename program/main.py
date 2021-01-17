@@ -19,7 +19,11 @@ def com():
     if len(name_list) == 1:
         return name_list[0]
     else:
-        print("请手动选择串口")
+        if len(name_list) == 0:
+            print("请检查遥控器连接")
+        else:
+            print("请手动选择串口")
+        raise SystemExit  # 抛出SystemExit异常，程序退出
 
 
 # 起降测试
