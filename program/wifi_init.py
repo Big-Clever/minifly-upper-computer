@@ -22,28 +22,29 @@ class wifi(object):
                 has.append(i)  # 添加到has列表
                 if i.signal > -90:  # 信号强度<-90的wifi几乎连不上
                     wifi_list.append((i.ssid, i.signal))  # 添加到wifi列表
-                    print('wifi信号强度：{0}，名称：{1}。'.format(i.signal, i.ssid))  # 输出wifi名称
+                    # print('wifi信号强度：{0}，名称：{1}。'.format(i.signal, i.ssid))  # 输出wifi名称
                 if i.ssid == "MiniFly":
                     self.minifly_find = 1
+                    print('wifi信号强度：{0}，名称：{1}。'.format(i.signal, i.ssid))  # 输出wifi名称
         return sorted(wifi_list, key=lambda x: x[1], reverse=True)  # 按信号强度由高到低排序
 
     # 连接wifi
-    def connect_wifi(self, wifi_name, wifi_password):
-        self.iface.disconnect()  # 断开无线网卡连接
-        time.sleep(1)  # 缓冲1秒
+    def connect_wifi(self, wifi_name):
+        # self.iface.disconnect()  # 断开无线网卡连接
+        # time.sleep(1)  # 缓冲1秒
         profile_info = Profile()  # wifi配置文件
         profile_info.ssid = wifi_name  # wifi名称
         profile_info.auth = const.AUTH_ALG_OPEN  # 需要密码
         self.iface.connect(profile_info)  # 连接
         # 检查是否连接成功
-        count = 0
+        sec = 0  # 秒数计时变量
         while self.iface.status() != const.IFACE_CONNECTED:
-            print(f"已搜索到MiniFly，正在建立连接……连接用时：{count}s")
-            count += 1
-            time.sleep(1)
-        print('='*50)
+            print(f"正在建立连接……连接用时：{sec}s")
+            sec += 0.1
+            time.sleep(0.1)
+        print('=' * 50)
         print('视频链路连接成功！')
-        print('='*50)
+        print('=' * 50)
         return True
 
     # 断开无线网卡已连接状态
@@ -55,17 +56,28 @@ class wifi(object):
             print('无线网卡：%s 未断开。' % self.iface.name())
 
 
-def camera_connect():
-    WIFI = wifi()  # 实例化wifi类
+# 连接摄像头wifi
+def camera_connect(wifi_name):
     counter = 0
-    while WIFI.minifly_find == 0:
-        print('正在扫描wifi...')
-        print(f"扫描用时{counter}s")
+    while wifi_name.minifly_find == 0:
+        print(f"正在扫描wifi...扫描用时{counter}s")
         counter += 1
-        WIFI.scan_wifi()  # 扫描周围wifi
-    WIFI.connect_wifi("MiniFly", None)
-    time.sleep(3)  # 等待3秒后，才能接收到图像
+        wifi_name.scan_wifi()  # 扫描周围wifi
+    print("已搜索到MiniFly")
+    wifi_name.connect_wifi("MiniFly")
+    # time.sleep(3)  # 等待3秒后，才能接收到图像
+
+
+# 检查wifi连接情况
+def check_connection(wifi_name):
+    if wifi_name.iface.status() in [const.IFACE_DISCONNECTED, const.IFACE_INACTIVE]:
+        print("连接中断！尝试重连中......")
+        wifi_name.connect_wifi("MiniFly")
 
 
 if __name__ == '__main__':
-    camera_connect()
+    WIFI = wifi()  # 实例化wifi类
+    camera_connect(WIFI)
+    while True:
+        check_connection(WIFI)
+        time.sleep(0.1)
