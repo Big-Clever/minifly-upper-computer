@@ -19,5 +19,8 @@ http://192.168.1.1:80/snapshot.cgi?resolution=11&user=admin&pwd=
 ## paddle框架
 华为事件，让国家意识到了技术创新的重要性，paddle作为国产的深度学习框架，内部消息，国家成立了一个重点的项目，扶持paddle的发展，避免有一天在科技上再被卡脖子。
 
+## 多进程
+cv2.VideoCapture无法被序列化报错，转化为numpy数组传入队列
+
 ## 致谢
 感谢降噪耳机让我保持在安静的环境中编程。
