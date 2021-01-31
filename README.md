@@ -21,6 +21,16 @@ http://192.168.1.1:80/snapshot.cgi?resolution=11&user=admin&pwd=
 
 ## 多进程
 cv2.VideoCapture无法被序列化报错，转化为numpy数组传入队列
+下面是可以被序列化的，反之则是不可序列化的
+可以被序列化的类型有：
+* None,True 和 False;
+* 整数，浮点数，复数zhuan;
+* 字符串，字节流，字节数组;
+* 包含可pickle对象的tuples，lists，sets和dictionaries；
+* 定义在moshule顶层的函数：
+* 定义在module顶层的内置函数；
+* 定义在module顶层的类；
+* 拥有__dict__()或__setstate__()的自定义类型；
 
 ## 致谢
 感谢降噪耳机让我保持在安静的环境中编程。

@@ -1,1 +1,10 @@
 .idea
+*.pyc
+*.pyc
+*.pyc
+*.jpg
+program/model/detection/__model__
+program/model/detection/__params__
+*.yml
+program/model/embedding/__model__
+program/model/embedding/__params__

@@ -26,7 +26,7 @@ def capture(q):
 def object_detector(q):
     """物体检测进程"""
     # 加载模型，可选模型 ssd_mobilenet_v1_pascal 和 yolov3_mobilenet_v1_coco2017
-    object_detector = hub.Module(name="ssd_mobilenet_v1_pascal")
+    object_detector = hub.Module(name="yolov3_mobilenet_v1_coco2017")
     while True:
         start_time = time.time()  # 记录开始时间
         frame = q.get()
@@ -53,9 +53,9 @@ def object_detector(q):
 
 if __name__ == '__main__':
     os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # 配置环境变量
-    picture_cap = Queue()  # 父进程创建Queue，并传给各个子进程
-    Capture = Process(target=capture, args=(picture_cap,))
-    Obj_detector = Process(target=object_detector, args=(picture_cap,))
+    cap_queue = Queue()  # 父进程创建Queue，并传给各个子进程
+    Capture = Process(target=capture, args=(cap_queue,))
+    Obj_detector = Process(target=object_detector, args=(cap_queue,))
     # 启动子进程
     Capture.start()
     Obj_detector.start()
