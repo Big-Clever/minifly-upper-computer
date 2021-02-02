@@ -5,6 +5,8 @@ import paddlehub as hub
 import os
 import time
 from multiprocessing import Process, Queue
+import uav
+import keyboard
 
 
 def capture(q):
@@ -18,9 +20,12 @@ def capture(q):
         if cap.isOpened():
             ret, frame = cap.read()
             frame = imutils.resize(frame, width=640)  # 缩小图片尺寸
-            if q.empty():
-                q.put(frame)
-                print(f"进程1接收图片用时{time.time() - start_time}s")
+            try:
+                q.get_nowait()
+            except Exception:pass
+
+            q.put(frame)
+            print(f"进程1接收图片用时{time.time() - start_time}s")
 
 
 def object_detector(q):
@@ -31,9 +36,6 @@ def object_detector(q):
         start_time = time.time()  # 记录开始时间
         frame = q.get()
         print(f"进程2等待图片用时{time.time() - start_time}s")
-        # if cap.isOpened():
-        #     ret, frame = cap.read()
-        #     frame = imutils.resize(frame, width=640)  # 缩小图片尺寸
         outputs = object_detector.object_detection(
             images=[frame],
             batch_size=1,
@@ -51,12 +53,22 @@ def object_detector(q):
             break
 
 
+def uav_control():
+    minifly = uav.Uav()
+    minifly.init_ser()
+    print("串口已连接")
+    keyboard.hook(minifly.pressed_keys)
+    minifly.control_start()
+
+
 if __name__ == '__main__':
     os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # 配置环境变量
-    cap_queue = Queue()  # 父进程创建Queue，并传给各个子进程
-    Capture = Process(target=capture, args=(cap_queue,))
-    Obj_detector = Process(target=object_detector, args=(cap_queue,))
+    cap_queue = Queue(True)  # 父进程创建Queue，并传给各个子进程
+    Uav_control = Process(target=uav_control, args=())  # 无人机控制进程
+    Capture = Process(target=capture, args=(cap_queue,))  # 捕获图像进程
+    Obj_detector = Process(target=object_detector, args=(cap_queue,))  # """物体检测进程"""
     # 启动子进程
+    Uav_control.start()
     Capture.start()
     Obj_detector.start()
     Capture.join()

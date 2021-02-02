@@ -8,3 +8,6 @@ program/model/detection/__params__
 *.yml
 program/model/embedding/__model__
 program/model/embedding/__params__
+program/__pycache__/wifi_init.cpython-37.pyc
+program/__pycache__/wifi_init.cpython-37.pyc
+program/__pycache__/wifi_init.cpython-37.pyc

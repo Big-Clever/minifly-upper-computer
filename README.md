@@ -32,5 +32,10 @@ cv2.VideoCapture无法被序列化报错，转化为numpy数组传入队列
 * 定义在module顶层的类；
 * 拥有__dict__()或__setstate__()的自定义类型；
 
+            if q.qsize():
+                q.get()
+            q.put(frame)
+根据官方文档，Queue.qsize()返回的值不可靠，Queue的大小可能在调用方法和得到结果之间发生变化
+
 ## 致谢
 感谢降噪耳机让我保持在安静的环境中编程。
