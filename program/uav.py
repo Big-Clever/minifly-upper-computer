@@ -13,6 +13,10 @@ class Uav(object):
         self.key_data = [0] * 6
         self.auto_data = [0] * 6
         # self.real_data = [0, 0, 0, 50]
+        self.SPEED_YAW = 100
+        self.SPEED_THRUST = 50
+        self.SPEED_PITCH = 10
+        self.SPEED_ROLL = 10
 
     def search_com(self):
         """搜索串口"""
@@ -108,10 +112,24 @@ class Uav(object):
                 self.key_ctrl_times = 250
             else:
                 self.key_ctrl_times = 20  # 手动控制次数
-            self.auto_ctrl_times = 0   # 自动控制次数清零
+            self.auto_ctrl_times = 0  # 自动控制次数清零
 
-    def control_start(self):
+    @staticmethod
+    def limit(value, value_limit):
+        if value > value_limit:
+            value = value_limit
+        elif value < -value_limit:
+            value = value_limit
+        return value
+
+    def control_start(self, q=None):
         while 1:
+            try:
+                self.auto_data = q.get_nowait()
+                self.auto_ctrl_times = 150
+            except Exception:
+                self.auto_data = None
+
             if self.key_ctrl_times > 0:  # 执行按键控制
                 if self.key_data[4] == 1:
                     self.take_off()  # 起飞/降落
@@ -123,11 +141,26 @@ class Uav(object):
                     print("空翻")
                 else:
                     data = self.key_data[0:4]
-                    data = [data[0]*10, data[1]*10, data[2]*100, data[3]*50+50]
+                    data = [data[0] * 10, data[1] * 10, data[2] * 100, data[3] * 50 + 50]
                     self.cmd_data_send(data)  # 发送控制数据
                     self.key_ctrl_times -= 1  # 控制次数-1
             elif self.auto_ctrl_times > 0:  # 执行自动控制
-                pass
+                if self.auto_data[4] == 1:
+                    self.take_off()  # 起飞/降落
+                    self.auto_ctrl_times = 0  # 清除控制次数
+                    print("起飞")
+                elif self.auto_data[5] > 0:
+                    self.flip(self.auto_data[5])  # 空翻
+                    self.auto_ctrl_times = 0  # 清除控制次数
+                    print("空翻")
+                else:
+                    data = self.auto_data[0:4]
+                    data[0] = self.limit(data[0], self.SPEED_ROLL)
+                    data[1] = self.limit(data[1], self.SPEED_PITCH)
+                    data[2] = self.limit(data[2], self.SPEED_YAW)
+                    data[3] = self.limit(data[3], self.SPEED_THRUST) + 50
+                    self.cmd_data_send(data)  # 发送控制数据
+                    self.auto_ctrl_times -= 1  # 控制次数-1
             time.sleep(0.001)
 
 
@@ -137,5 +170,3 @@ if __name__ == '__main__':
     print("串口已连接")
     keyboard.hook(uav.pressed_keys)
     uav.control_start()
-
-
