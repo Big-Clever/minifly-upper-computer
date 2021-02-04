@@ -24,7 +24,7 @@ cv2.VideoCapture无法被序列化报错，转化为numpy数组传入队列
 下面是可以被序列化的，反之则是不可序列化的
 可以被序列化的类型有：
 * None,True 和 False;
-* 整数，浮点数，复数zhuan;
+* 整数，浮点数，复数;
 * 字符串，字节流，字节数组;
 * 包含可pickle对象的tuples，lists，sets和dictionaries；
 * 定义在moshule顶层的函数：
