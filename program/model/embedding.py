@@ -1,8 +1,7 @@
 import os
 import cv2
 import numpy as np
-from paddle.inference import Config
-from paddle.inference import create_predictor
+import paddle
 
 __all__ = ['Embedding']
 
@@ -13,7 +12,7 @@ class Embedding():
     def load_model(self, model_dir, use_gpu=False):
         model = os.path.join(model_dir, '__model__')
         params = os.path.join(model_dir, '__params__')
-        config = Config(model, params)
+        config = paddle.inference.Config(model, params)
 
         # 设置参数
         if use_gpu:   
@@ -28,7 +27,7 @@ class Embedding():
         config.switch_specify_input_names(True)
 
         # 通过参数加载模型预测器
-        predictor = create_predictor(config)
+        predictor = paddle.inference.create_predictor(config)
 
         # 获取模型的输入输出
         input_names = predictor.get_input_names()

@@ -6,8 +6,8 @@ from deep_sort import NearestNeighborDistanceMetric, Detection, Tracker
 class DeepSort(object):
     def __init__(
             self,
-            det_model_dir,
-            emb_model_dir,
+            det_model_dir='./model/detection',
+            emb_model_dir='./model/embedding',
             use_gpu=False,
             run_mode='fluid',
             threshold=0.5,
@@ -77,6 +77,7 @@ if __name__ == '__main__':
                 cv2.rectangle(frame, (output[0], output[1]), (output[2], output[3]), (0, 0, 255), 2)
                 cv2.putText(frame, str(output[-1]), (output[0], output[1]), font, 1.2, (255, 255, 255), 2)
         print(outputs)
+
         cv2.imshow('test', frame)
         k = cv2.waitKey(1)
         if k == 27:

@@ -9,6 +9,7 @@ import uav
 import keyboard
 import numpy as np
 import pid
+import deepsort
 
 
 def uav_control(q):
@@ -44,8 +45,11 @@ def cap_cache(cap_queue, flag_queue, frame_queue, progress_count):  # 捕获队�
 
 def capture(cap_q):
     """图像捕获进程"""
+    start_time = time.time()
     WIFI = wifi_init.wifi()  # 实例化wifi类
     wifi_init.camera_connect(WIFI)  # 连接飞行器摄像头
+    while time.time()-start_time < 3:  # 等待其他进程初始化
+        time.sleep(0.5)
     while True:
         start_time = time.time()
         wifi_init.check_connection(WIFI)  # 检查wifi连接状态
@@ -70,7 +74,7 @@ def object_detector(frame_queue, obj_queue):
             images=[frame],
             batch_size=1,
             use_gpu=True,
-            score_thresh=0.3,
+            score_thresh=0.4,
             visualization=False
         )
         obj_queue.put(outputs)
@@ -84,22 +88,36 @@ def face_detector(frame_queue, face_queue):
     start_time = time.time()
     while True:
         frame = frame_queue.get()
-        print(f"4人脸检测进程接收等待时间：{time.time()-start_time}")
+        print(f"4人脸检测进程接收等待时间：{time.time()-start_time}s")
         start_time = time.time()
         result = face_detector.face_detection(
             images=[frame],
             use_gpu=False,
             visualization=False,
-            confs_threshold=0.5)
+            confs_threshold=0.7)
         face_queue.put(result)
-        print(f"4人脸检测完成用时：{time.time() - start_time}")
+        print(f"4人脸检测完成用时：{time.time() - start_time}s")
         start_time = time.time()
 
 
-def show_img(frame_queue, flag_queue, ctrl_msg_queue, obj_queue, face_queue):
+def human_track(frame_queue, target_queue):
+    """目标跟踪进程"""
+    human_track = deepsort.DeepSort(use_gpu=True)
+    start_time = time.time()
+    while 1:
+        frame = frame_queue.get()
+        print(f"5目标跟踪进程接收等待时间：{time.time() - start_time}s")
+        start_time = time.time()
+        outputs = human_track.update(frame)
+        target_queue.put(outputs)
+        print(f"5目标跟踪完成用时：{time.time() - start_time}s")
+        start_time = time.time()
+
+
+def show_img(frame_queue, flag_queue, ctrl_msg_queue, obj_queue, face_queue, target_queue):
     """图像显示进程"""
-    Roll_pid = pid.PID(0.01, 0, 0, 2)
-    Pitch_pid = pid.PID(0.1, 0, 0, 2)
+    Roll_pid = pid.PID(0.03, 0, 0.02, 2)
+    Pitch_pid = pid.PID(3.5, 0, 1, 2)
     Height_pid = pid.PID(0.2, 0, 0, 0)
     Yaw_pid = pid.PID(0, 0, 0, 0)
     face_size = 0
@@ -128,23 +146,33 @@ def show_img(frame_queue, flag_queue, ctrl_msg_queue, obj_queue, face_queue):
         """识别结果接收完成，标志位置1"""
         # flag_queue.put(1)
         """自动飞行控制"""
-        # if len(face_ret[0]["data"]) > 0:
-        #     center = frame.shape[1]/2
-        #     x_err = (right + left)/2 - center
-        #     roll_ctrl = Roll_pid.update(x_err)
-        #
-        #     center = frame.shape[0] / 2
-        #     z_err = (bottom + top)/2 - center
-        #     height_ctrl = Height_pid.update(-z_err)
-        #
-        #     if face_size == 0:
-        #         face_size = (right+bottom) - (left+top)
-        #         pitch_err = 0
-        #     else:
-        #         pitch_err = face_size/((right+bottom) - (left+top)) - 1
-        #     pitch_ctrl = Pitch_pid.update(pitch_err)
-        #
-        #     ctrl_msg_queue.get([roll_ctrl, pitch_ctrl, 0, height_ctrl])
+        if len(face_ret[0]["data"]) > 0:
+            print((left, top), (right, bottom))
+            center = frame.shape[1]/2
+            x_err = (right + left)/2 - center
+            roll_ctrl = Roll_pid.update(x_err)
+            print("2")
+            center = frame.shape[0] / 2
+            z_err = (bottom + top)/2 - center
+            height_ctrl = Height_pid.update(-z_err)
+            print("3")
+            if face_size == 0:
+                face_size = (right+bottom) - (left+top)
+                pitch_err = 0
+            else:
+                pitch_err = face_size/((right+bottom) - (left+top)) - 1
+            pitch_ctrl = Pitch_pid.update(pitch_err)
+            print("=" * 80)
+            print("4", [roll_ctrl, pitch_ctrl, 0, height_ctrl])
+            print("=" * 80)
+            ctrl_msg_queue.put([roll_ctrl, pitch_ctrl, 0, height_ctrl, 0, 0])
+            print("5")
+        """目标跟踪数据处理"""
+        outputs = target_queue.get()
+        if outputs is not None:
+            for output in outputs:
+                cv2.rectangle(frame, (output[0], output[1]), (output[2], output[3]), (0, 0, 255), 2)
+                cv2.putText(frame, str(output[-1]), (output[0], output[1]), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 1)
 
         """图像显示"""
         fps = 1 / (time.time() - time_record)
@@ -161,7 +189,7 @@ def show_img(frame_queue, flag_queue, ctrl_msg_queue, obj_queue, face_queue):
 
 if __name__ == '__main__':
     os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # 配置环境变量
-    img_process_num = 2  # 图像处理进程数量，包括：物体检测、人脸检测、人体跟踪、姿态识别、深度估计
+    img_process_num = 3  # 图像处理进程数量，包括：物体检测、人脸检测、人体跟踪、姿态识别、深度估计
     """父进程创建Queue，并传给各个子进程"""
     cap_queue = Queue(True)  # 捕获图像队列
     ctrl_msg_queue = Queue(True)  # 控制信号队列
@@ -169,6 +197,7 @@ if __name__ == '__main__':
     # show_queue = Queue(True)  # 显示图像队列
     obj_queue = Queue(True)  # 物体检测结果队列
     face_queue = Queue(True)  # 人脸识别结果队列
+    target_queue = Queue(True)  # 目标跟踪结果队列
     flag_queue = Queue(True)  # 标志队列
     """进程创建"""
     Uav_control = Process(target=uav_control, args=(ctrl_msg_queue,))  # 无人机控制进程
@@ -176,13 +205,15 @@ if __name__ == '__main__':
     Cap_cache = Process(target=cap_cache, args=(cap_queue, flag_queue, frame_queue, img_process_num))  # 图像分配进程
     Obj_detector = Process(target=object_detector, args=(frame_queue, obj_queue))  # 物体检测进程
     Face_detector = Process(target=face_detector, args=(frame_queue, face_queue))  # 人脸检测进程
-    Show_img = Process(target=show_img, args=(frame_queue, flag_queue, ctrl_msg_queue, obj_queue, face_queue))  # 图像显示进程
+    Human_track = Process(target=human_track, args=(frame_queue, target_queue))  # 人类跟踪进程
+    Show_img = Process(target=show_img, args=(frame_queue, flag_queue, ctrl_msg_queue, obj_queue, face_queue, target_queue))  # 图像显示进程
     """启动子进程"""
-    # Uav_control.start()  # 无人机控制进程
+    Uav_control.start()  # 无人机控制进程
     Capture.start()  # 捕获图像进程
     Show_img.start()  # 图像分配进程
     Obj_detector.start()  # 物体检测进程
     Face_detector.start()  # 人脸检测进程
+    Human_track.start()  # 人类跟踪进程
     Cap_cache.start()  # 图像显示进程
 
 

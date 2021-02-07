@@ -16,3 +16,4 @@ program/test1.py
 program/test2.py
 program/test3.py
 program/__pycache__/wifi_init.cpython-37.pyc
+program/model/report.log
