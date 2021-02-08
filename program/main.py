@@ -68,7 +68,6 @@ def object_detector(frame_queue, obj_queue):
     start_time = time.time()
     while True:
         frame = frame_queue.get()
-        print(f"3物体检测进程接收等待时间：{time.time()-start_time}s")
         start_time = time.time()
         outputs = object_detector.object_detection(
             images=[frame],
@@ -88,13 +87,12 @@ def face_detector(frame_queue, face_queue):
     start_time = time.time()
     while True:
         frame = frame_queue.get()
-        print(f"4人脸检测进程接收等待时间：{time.time()-start_time}s")
         start_time = time.time()
         result = face_detector.face_detection(
             images=[frame],
             use_gpu=False,
             visualization=False,
-            confs_threshold=0.7)
+            confs_threshold=0.8)
         face_queue.put(result)
         print(f"4人脸检测完成用时：{time.time() - start_time}s")
         start_time = time.time()
@@ -106,7 +104,6 @@ def human_track(frame_queue, target_queue):
     start_time = time.time()
     while 1:
         frame = frame_queue.get()
-        print(f"5目标跟踪进程接收等待时间：{time.time() - start_time}s")
         start_time = time.time()
         outputs = human_track.update(frame)
         target_queue.put(outputs)
@@ -116,11 +113,12 @@ def human_track(frame_queue, target_queue):
 
 def show_img(frame_queue, flag_queue, ctrl_msg_queue, obj_queue, face_queue, target_queue):
     """图像显示进程"""
-    Roll_pid = pid.PID(0.03, 0, 0.02, 2)
-    Pitch_pid = pid.PID(3.5, 0, 1, 2)
-    Height_pid = pid.PID(0.2, 0, 0, 0)
+    Roll_pid = pid.PID(0.017, 0.002, 0.02, 0.1)  # 0.017, 0.002, 0.02, 0.1
+    Pitch_pid = pid.PID(4, 0.2, 4, 0.3)  # 4, 0.2, 4, 0.3
+    Height_pid = pid.PID(0.2, 0, 0.0005, 0)  # 0.2, 0, 0.0005, 0
     Yaw_pid = pid.PID(0, 0, 0, 0)
-    face_size = 0
+    face_size = 150  # 若设为0，则为第一帧图像所测距离
+    pitch_err = 0
     start_time = time_record = time.time()
     while 1:
         frame = frame_queue.get()
@@ -147,26 +145,26 @@ def show_img(frame_queue, flag_queue, ctrl_msg_queue, obj_queue, face_queue, tar
         # flag_queue.put(1)
         """自动飞行控制"""
         if len(face_ret[0]["data"]) > 0:
-            print((left, top), (right, bottom))
-            center = frame.shape[1]/2
-            x_err = (right + left)/2 - center
+            center_x = frame.shape[1]/2
+            x_err = (right + left)/2 - center_x
             roll_ctrl = Roll_pid.update(x_err)
-            print("2")
-            center = frame.shape[0] / 2
-            z_err = (bottom + top)/2 - center
+            center_z = frame.shape[0] / 2
+            z_err = (bottom + top)/2 - center_z
             height_ctrl = Height_pid.update(-z_err)
-            print("3")
-            if face_size == 0:
-                face_size = (right+bottom) - (left+top)
-                pitch_err = 0
-            else:
-                pitch_err = face_size/((right+bottom) - (left+top)) - 1
-            pitch_ctrl = Pitch_pid.update(pitch_err)
+            cv2.circle(frame, (int(center_x), int(center_z)), 1, (0, 0, 255), 0 )
+            # if face_size == 0:
+            #     face_size = (right+bottom) - (left+top)
+            #     print("face_size=",face_size)
+            #     pitch_err = 0
+            # else:
+            pitch_err = (face_size/((right+bottom) - (left+top)) - 1) * 0.5 + pitch_err * 0.5  # 滑动滤波
+            print("face_size=", (right+bottom) - (left+top))
+
+            pitch_ctrl = Pitch_pid.update(pitch_err) + 0.25
             print("=" * 80)
-            print("4", [roll_ctrl, pitch_ctrl, 0, height_ctrl])
+            print([roll_ctrl, pitch_ctrl, 0, height_ctrl])
             print("=" * 80)
             ctrl_msg_queue.put([roll_ctrl, pitch_ctrl, 0, height_ctrl, 0, 0])
-            print("5")
         """目标跟踪数据处理"""
         outputs = target_queue.get()
         if outputs is not None:
