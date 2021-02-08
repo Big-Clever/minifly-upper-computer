@@ -38,7 +38,10 @@ class PID:
         elif self.ITerm > self.windup_guard:
             self.ITerm = self.windup_guard
 
-        DTerm = delta_error / delta_time
+        if delta_time > 0:
+            DTerm = delta_error / delta_time
+        else:
+            DTerm = 0
 
         output = PTerm + self.ITerm + (self.Kd * DTerm)
         print(error, PTerm, self.Ki * self.ITerm, self.Kd * DTerm, output)

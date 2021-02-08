@@ -116,7 +116,7 @@ def show_img(frame_queue, flag_queue, ctrl_msg_queue, obj_queue, face_queue, tar
     Roll_pid = pid.PID(0.017, 0.002, 0.02, 0.1)  # 0.017, 0.002, 0.02, 0.1
     Pitch_pid = pid.PID(4, 0.2, 4, 0.3)  # 4, 0.2, 4, 0.3
     Height_pid = pid.PID(0.2, 0, 0.0005, 0)  # 0.2, 0, 0.0005, 0
-    Yaw_pid = pid.PID(0, 0, 0, 0)
+    Yaw_pid = pid.PID(0.3, 0, 0.02, 0)
     face_size = 150  # 若设为0，则为第一帧图像所测距离
     pitch_err = 0
     start_time = time_record = time.time()
@@ -145,26 +145,33 @@ def show_img(frame_queue, flag_queue, ctrl_msg_queue, obj_queue, face_queue, tar
         # flag_queue.put(1)
         """自动飞行控制"""
         if len(face_ret[0]["data"]) > 0:
+            "水平方向"
             center_x = frame.shape[1]/2
             x_err = (right + left)/2 - center_x
             roll_ctrl = Roll_pid.update(x_err)
+            "垂直方向"
             center_z = frame.shape[0] / 2
             z_err = (bottom + top)/2 - center_z
             height_ctrl = Height_pid.update(-z_err)
+            "画中心点"
             cv2.circle(frame, (int(center_x), int(center_z)), 1, (0, 0, 255), 0 )
-            # if face_size == 0:
-            #     face_size = (right+bottom) - (left+top)
-            #     print("face_size=",face_size)
-            #     pitch_err = 0
-            # else:
-            pitch_err = (face_size/((right+bottom) - (left+top)) - 1) * 0.5 + pitch_err * 0.5  # 滑动滤波
-            print("face_size=", (right+bottom) - (left+top))
-
+            "前后方向"
+            if face_size == 0:
+                face_size = (right+bottom) - (left+top)
+                print("face_size=",face_size)
+                pitch_err = 0
+            else:
+                pitch_err = (face_size/((right+bottom) - (left+top)) - 1) * 0.5 + pitch_err * 0.5  # 滑动滤波
+                print("face_size=", (right+bottom) - (left+top))
             pitch_ctrl = Pitch_pid.update(pitch_err) + 0.25
+            "旋转角度"
+            yaw_ctrl = Yaw_pid.update(x_err)
+
             print("=" * 80)
-            print([roll_ctrl, pitch_ctrl, 0, height_ctrl])
+            print([roll_ctrl, pitch_ctrl, yaw_ctrl, height_ctrl])
             print("=" * 80)
-            ctrl_msg_queue.put([roll_ctrl, pitch_ctrl, 0, height_ctrl, 0, 0])
+            # ctrl_msg_queue.put([roll_ctrl, pitch_ctrl, 0, height_ctrl, 0, 0])  # 水平跟随
+            ctrl_msg_queue.put([0, pitch_ctrl, yaw_ctrl, height_ctrl, 0, 0])  # 旋转跟随
         """目标跟踪数据处理"""
         outputs = target_queue.get()
         if outputs is not None:
