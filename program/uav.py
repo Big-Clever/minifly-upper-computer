@@ -123,7 +123,7 @@ class Uav(object):
         while 1:
             try:
                 self.auto_data = q.get_nowait()
-                self.auto_ctrl_times = 150
+                self.auto_ctrl_times = 200
             except Exception:pass
 
             if self.key_data != [0]*6:  # 执行按键控制
@@ -140,7 +140,6 @@ class Uav(object):
                     data = self.key_data[0:4]
                     data = [data[0] * 10, data[1] * 10, data[2] * 100, data[3] * 50 + 50]
                     self.cmd_data_send(data)  # 发送控制数据
-                    print(data, time.time())
             elif self.auto_ctrl_times > 0:  # 执行自动控制
                 if self.auto_data[4] == 1:
                     self.take_off()  # 起飞/降落
@@ -158,8 +157,8 @@ class Uav(object):
                     data[3] = self.limit(data[3], self.SPEED_THRUST) + 50
                     self.cmd_data_send(data)  # 发送控制数据
                     self.auto_ctrl_times -= 1  # 控制次数-1
-            s = time.time()
-            while(time.time()-s<0.001):pass  # 延时1ms，系统休眠一次约15.8ms，故不使用time.sleep()
+            s = time.perf_counter()
+            while(time.perf_counter()-s < 0.001):pass  # 延时1ms，系统休眠一次约15.8ms，故不使用time.sleep()
 
 
 if __name__ == '__main__':

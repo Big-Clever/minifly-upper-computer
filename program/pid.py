@@ -44,7 +44,7 @@ class PID:
             DTerm = 0
 
         output = PTerm + self.ITerm + (self.Kd * DTerm)
-        print(error, PTerm, self.Ki * self.ITerm, self.Kd * DTerm, output)
+        print(error, PTerm, self.ITerm, self.Kd * DTerm, output)
         return output
 
     def set_param(self, p, i, d, windup):
